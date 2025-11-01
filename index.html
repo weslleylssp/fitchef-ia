@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitChef IA - Receitas Fitness Inteligentes</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      max-width: 600px;
+      width: 100%;
+      padding: 40px;
+    }
+
+    h1 {
+      color: #333;
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 2.5rem;
+    }
+
+    .subtitle {
+      color: #666;
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 1.1rem;
+    }
+
+    .input-group {
+      margin-bottom: 25px;
+    }
+
+    label {
+      display: block;
+      color: #555;
+      font-weight: 600;
+      margin-bottom: 10px;
+      font-size: 1rem;
+    }
+
+    textarea {
+      width: 100%;
+      padding: 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 16px;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 120px;
+      transition: border-color 0.3s;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .hint {
+      color: #999;
+      font-size: 0.9rem;
+      margin-top: 5px;
+    }
+
+    button {
+      width: 100%;
+      padding: 15px 30px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .loading.active {
+      display: block;
+    }
+
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .error {
+      background: #fee;
+      color: #c33;
+      padding: 15px;
+      border-radius: 10px;
+      margin-top: 20px;
+      display: none;
+    }
+
+    .error.active {
+      display: block;
+    }
+
+    .ingredients-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .tag {
+      background: #f0f0f0;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .tag:hover {
+      background: #e0e0e0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🍽️ FitChef IA</h1>
+    <p class="subtitle">Transforme seus ingredientes em receitas fitness</p>
+    
+    <div class="input-group">
+      <label for="ingredientes">Quais ingredientes você tem disponível?</label>
+      <textarea 
+        id="ingredientes" 
+        placeholder="Ex: frango, ovo, batata-doce, brócolis, arroz integral, queijo cottage..."
+      ></textarea>
+      <p class="hint">💡 Separe os ingredientes por vírgula</p>
+    </div>
+
+    <div class="ingredients-tags">
+      <span class="tag" onclick="addIngredient('frango')">🍗 Frango</span>
+      <span class="tag" onclick="addIngredient('ovo')">🥚 Ovo</span>
+      <span class="tag" onclick="addIngredient('batata-doce')">🍠 Batata-doce</span>
+      <span class="tag" onclick="addIngredient('arroz integral')">🍚 Arroz integral</span>
+      <span class="tag" onclick="addIngredient('brócolis')">🥦 Brócolis</span>
+      <span class="tag" onclick="addIngredient('aveia')">🌾 Aveia</span>
+    </div>
+
+    <button id="buscar" onclick="buscarReceitas()">
+      Buscar Receitas Fitness
+    </button>
+
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p style="margin-top: 15px; color: #666;">Buscando receitas perfeitas para você...</p>
+    </div>
+
+    <div class="error" id="error">
+      <strong>Ops!</strong> <span id="errorMsg"></span>
+    </div>
+  </div>
+
+  <script>
+    // Adiciona ingrediente ao campo de texto
+    function addIngredient(ingredient) {
+      const textarea = document.getElementById('ingredientes');
+      const current = textarea.value.trim();
+      
+      if (current) {
+        // Verifica se o ingrediente já está na lista
+        const ingredients = current.split(',').map(i => i.trim().toLowerCase());
+        if (!ingredients.includes(ingredient.toLowerCase())) {
+          textarea.value = current + ', ' + ingredient;
+        }
+      } else {
+        textarea.value = ingredient;
+      }
+      
+      textarea.focus();
+    }
+
+    // Função principal de busca
+    async function buscarReceitas() {
+      const ingredientesInput = document.getElementById('ingredientes');
+      const btn = document.getElementById('buscar');
+      const loading = document.getElementById('loading');
+      const errorDiv = document.getElementById('error');
+      const errorMsg = document.getElementById('errorMsg');
+      
+      // Validação
+      if (!ingredientesInput.value.trim()) {
+        errorDiv.classList.add('active');
+        errorMsg.textContent = 'Por favor, informe pelo menos um ingrediente.';
+        setTimeout(() => errorDiv.classList.remove('active'), 3000);
+        return;
+      }
+      
+      // Prepara lista de ingredientes
+      const lista = ingredientesInput.value
+        .split(',')
+        .map(i => i.trim().toLowerCase())
+        .filter(i => i.length > 0);
+      
+      // Desabilita botão e mostra loading
+      btn.disabled = true;
+      loading.classList.add('active');
+      errorDiv.classList.remove('active');
+      
+      try {
+        // IMPORTANTE: Substitua pela URL do seu webhook n8n
+        const WEBHOOK_URL = 'https://wdlacerdasp.app.n8n.cloud/webhook/fitchef';
+        
+        const response = await fetch(WEBHOOK_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ingredientes: lista })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Erro ao buscar receitas');
+        }
+        
+        const data = await response.json();
+        
+        if (data.status === 'sucesso' && data.receitas) {
+          // Salva receitas no localStorage
+          localStorage.setItem('receitas', JSON.stringify(data.receitas));
+          localStorage.setItem('ingredientes_buscados', JSON.stringify(lista));
+          
+          // Redireciona para página de resultados
+          window.location.href = 'receitas.html';
+        } else {
+          throw new Error(data.mensagem || 'Nenhuma receita encontrada');
+        }
+        
+      } catch (error) {
+        console.error('Erro:', error);
+        errorDiv.classList.add('active');
+        errorMsg.textContent = error.message || 'Erro ao conectar com o servidor. Tente novamente.';
+        setTimeout(() => errorDiv.classList.remove('active'), 5000);
+      } finally {
+        btn.disabled = false;
+        loading.classList.remove('active');
+      }
+    }
+
+    // Permite buscar pressionando Enter
+    document.getElementById('ingredientes').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        buscarReceitas();
+      }
+    });
+  </script>
+</body>
+</html>

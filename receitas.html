@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitChef IA - Receitas Encontradas</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 30px;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      font-size: 1.2rem;
+      opacity: 0.9;
+    }
+
+    .back-btn {
+      display: inline-block;
+      background: rgba(255,255,255,0.2);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 30px;
+      text-decoration: none;
+      margin-bottom: 20px;
+      transition: background 0.3s;
+    }
+
+    .back-btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .stats {
+      background: white;
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      text-align: center;
+    }
+
+    .stats h3 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .ingredients-used {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 10px;
+    }
+
+    .ingredient-chip {
+      background: #f0f0f0;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      color: #666;
+    }
+
+    .recipes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+      gap: 25px;
+      margin-bottom: 50px;
+    }
+
+    .recipe-card {
+      background: white;
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .recipe-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+    }
+
+    .recipe-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+    }
+
+    .recipe-header h2 {
+      font-size: 1.5rem;
+      margin-bottom: 5px;
+    }
+
+    .recipe-category {
+      display: inline-block;
+      background: rgba(255,255,255,0.2);
+      padding: 3px 10px;
+      border-radius: 15px;
+      font-size: 0.85rem;
+      margin-top: 5px;
+    }
+
+    .recipe-body {
+      padding: 20px;
+    }
+
+    .recipe-section {
+      margin-bottom: 20px;
+    }
+
+    .recipe-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .recipe-section h3 {
+      color: #667eea;
+      font-size: 1.1rem;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .ingredients-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .ingredients-list li {
+      padding: 5px 0;
+      padding-left: 20px;
+      position: relative;
+      color: #555;
+    }
+
+    .ingredients-list li:before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: #667eea;
+      font-weight: bold;
+    }
+
+    .preparation {
+      color: #555;
+      line-height: 1.6;
+      white-space: pre-line;
+    }
+
+    .macros {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      background: #f8f8f8;
+      padding: 15px;
+      border-radius: 10px;
+    }
+
+    .macro-item {
+      text-align: center;
+    }
+
+    .macro-value {
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .macro-label {
+      font-size: 0.85rem;
+      color: #888;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .no-results {
+      background: white;
+      border-radius: 15px;
+      padding: 40px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    .no-results h2 {
+      color: #333;
+      margin-bottom: 15px;
+    }
+
+    .no-results p {
+      color: #666;
+      margin-bottom: 25px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 12px 30px;
+      border: none;
+      border-radius: 30px;
+      text-decoration: none;
+      display: inline-block;
+      font-weight: 600;
+      transition: transform 0.2s;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+    }
+
+    @media (max-width: 768px) {
+      .recipes-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .header h1 {
+        font-size: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <a href="index.html" class="back-btn">← Nova Busca</a>
+      <h1>🍽️ FitChef IA</h1>
+      <p id="subtitle">Suas receitas fitness personalizadas</p>
+    </div>
+
+    <div class="stats" id="stats">
+      <h3><span id="recipeCount">0</span> receitas encontradas</h3>
+      <div class="ingredients-used" id="ingredientsUsed"></div>
+    </div>
+
+    <div class="recipes-grid" id="recipesContainer"></div>
+
+    <div class="no-results" id="noResults" style="display: none;">
+      <h2>😔 Nenhuma receita encontrada</h2>
+      <p>Não encontramos receitas com os ingredientes informados.<br>
+         Tente adicionar mais ingredientes ou fazer uma nova busca.</p>
+      <a href="index.html" class="btn-primary">Fazer Nova Busca</a>
+    </div>
+  </div>
+
+  <script>
+    // Carrega receitas do localStorage
+    const receitas = JSON.parse(localStorage.getItem('receitas')) || [];
+    const ingredientesBuscados = JSON.parse(localStorage.getItem('ingredientes_buscados')) || [];
+    
+    // Atualiza contador e ingredientes usados
+    document.getElementById('recipeCount').textContent = receitas.length;
+    
+    const ingredientsContainer = document.getElementById('ingredientsUsed');
+    ingredientesBuscados.forEach(ing => {
+      const chip = document.createElement('div');
+      chip.className = 'ingredient-chip';
+      chip.textContent = ing;
+      ingredientsContainer.appendChild(chip);
+    });
+    
+    // Container principal
+    const container = document.getElementById('recipesContainer');
+    const noResults = document.getElementById('noResults');
+    const stats = document.getElementById('stats');
+    
+    if (receitas.length === 0) {
+      container.style.display = 'none';
+      noResults.style.display = 'block';
+      stats.style.display = 'none';
+    } else {
+      // Renderiza cada receita
+      receitas.forEach(receita => {
+        const card = document.createElement('div');
+        card.className = 'recipe-card';
+        
+        // Processa macros
+        let macrosHtml = '';
+        if (receita.macros) {
+          macrosHtml = `
+            <div class="recipe-section">
+              <h3>📊 Informações Nutricionais</h3>
+              <div class="macros">
+                <div class="macro-item">
+                  <div class="macro-value">${receita.macros.kcal || '—'}</div>
+                  <div class="macro-label">kcal</div>
+                </div>
+                <div class="macro-item">
+                  <div class="macro-value">${receita.macros.p || '—'}g</div>
+                  <div class="macro-label">Proteína</div>
+                </div>
+                <div class="macro-item">
+                  <div class="macro-value">${receita.macros.c || '—'}g</div>
+                  <div class="macro-label">Carbos</div>
+                </div>
+                <div class="macro-item">
+                  <div class="macro-value">${receita.macros.g || '—'}g</div>
+                  <div class="macro-label">Gordura</div>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+        
+        // Processa ingredientes
+        let ingredientsList = '';
+        if (Array.isArray(receita.ingredientes)) {
+          ingredientsList = receita.ingredientes
+            .map(ing => `<li>${ing}</li>`)
+            .join('');
+        }
+        
+        // Categoria
+        const categoria = receita.categoria || 'Receita Fitness';
+        
+        card.innerHTML = `
+          <div class="recipe-header">
+            <h2>${receita.nome}</h2>
+            <span class="recipe-category">${categoria}</span>
+          </div>
+          <div class="recipe-body">
+            <div class="recipe-section">
+              <h3>🥘 Ingredientes</h3>
+              <ul class="ingredients-list">
+                ${ingredientsList}
+              </ul>
+            </div>
+            
+            <div class="recipe-section">
+              <h3>👨‍🍳 Modo de Preparo</h3>
+              <div class="preparation">${receita.modo_preparo}</div>
+            </div>
+            
+            ${macrosHtml}
+          </div>
+        `;
+        
+        container.appendChild(card);
+      });
+    }
+
+    // Limpa localStorage após exibir (opcional)
+    // localStorage.removeItem('receitas');
+    // localStorage.removeItem('ingredientes_buscados');
+  </script>
+</body>
+</html>

@@ -1,0 +1,352 @@
+{
+  "name": "FitChef Web API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "fitchef",
+        "responseMode": "lastNode",
+        "options": {
+          "cors": {
+            "enabled": true,
+            "allowedOrigins": "*"
+          }
+        }
+      },
+      "id": "webhook-entrada",
+      "name": "Webhook Entrada",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "fitchef-api"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "check-ingredientes",
+              "leftValue": "={{ $json.ingredientes }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "validar-entrada",
+      "name": "Validar Entrada",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepara os ingredientes para a query do Supabase\nconst ingredientes = $input.first().json.ingredientes;\n\n// Converte array em string formatada para Supabase\n// Formato: {ingrediente1,ingrediente2,ingrediente3}\nconst ingredientesFormatados = '{' + ingredientes.map(i => i.toLowerCase().trim()).join(',') + '}';\n\n// Prepara URL com query parameters\nconst baseUrl = $env.SUPABASE_URL || 'https://YOUR_PROJECT.supabase.co';\nconst apiKey = $env.SUPABASE_KEY || 'YOUR_ANON_KEY';\n\nreturn {\n  ingredientes: ingredientes,\n  ingredientesFormatados: ingredientesFormatados,\n  supabaseUrl: baseUrl,\n  supabaseKey: apiKey\n};"
+      },
+      "id": "preparar-query",
+      "name": "Preparar Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 280]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.supabaseUrl }}/rest/v1/receitas",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "bodyContentType": "json",
+          "queryParametersUi": {
+            "parameter": [
+              {
+                "name": "select",
+                "value": "*"
+              }
+            ]
+          }
+        },
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "apikey",
+              "value": "={{ $json.supabaseKey }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $json.supabaseKey }}"
+            }
+          ]
+        }
+      },
+      "id": "buscar-todas-receitas",
+      "name": "Buscar Todas Receitas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [850, 280]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filtra receitas que podem ser feitas com os ingredientes disponíveis\nconst ingredientesUsuario = $input.first().json.ingredientes.map(i => i.toLowerCase().trim());\nconst todasReceitas = $input.first().json.body || [];\n\n// Filtra receitas onde TODOS os ingredientes da receita estão na lista do usuário\nconst receitasCompativeis = todasReceitas.filter(receita => {\n  // Verifica se todos os ingredientes da receita estão disponíveis\n  const ingredientesReceita = receita.ingredientes.map(i => i.toLowerCase().trim());\n  return ingredientesReceita.every(ingReceita => \n    ingredientesUsuario.some(ingUsuario => \n      ingUsuario.includes(ingReceita) || ingReceita.includes(ingUsuario)\n    )\n  );\n});\n\n// Ordena por número de ingredientes usados (receitas que usam mais ingredientes primeiro)\nreceitasCompativeis.sort((a, b) => b.ingredientes.length - a.ingredientes.length);\n\n// Limita a 10 receitas\nconst receitasFinais = receitasCompativeis.slice(0, 10);\n\nreturn {\n  status: receitasFinais.length > 0 ? 'sucesso' : 'nenhuma_receita',\n  total: receitasFinais.length,\n  ingredientes_buscados: ingredientesUsuario,\n  receitas: receitasFinais\n};"
+      },
+      "id": "filtrar-receitas",
+      "name": "Filtrar Receitas Compatíveis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 280]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "check-resultados",
+              "leftValue": "={{ $json.total }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "verificar-resultados",
+      "name": "Verificar Resultados",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1250, 280]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Você é um assistente especializado em receitas fitness. Analise os ingredientes disponíveis e sugira receitas alternativas baseadas em combinações comuns na culinária fitness. Retorne APENAS um JSON válido com o formato especificado."
+            },
+            {
+              "role": "user",
+              "content": "Ingredientes disponíveis: {{ $json.ingredientes_buscados.join(', ') }}\n\nSugira 3 receitas fitness simples que podem ser feitas com alguns desses ingredientes. Retorne no formato JSON:\n{\n  \"receitas\": [\n    {\n      \"nome\": \"Nome da Receita\",\n      \"ingredientes\": [\"ingrediente1\", \"ingrediente2\"],\n      \"modo_preparo\": \"Instruções de preparo\",\n      \"macros\": {\"kcal\": 300, \"p\": 25, \"c\": 30, \"g\": 10},\n      \"categoria\": \"Categoria\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 1000
+        }
+      },
+      "id": "gpt-sugestoes",
+      "name": "GPT Sugestões (Opcional)",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [1450, 380],
+      "disabled": false
+    },
+    {
+      "parameters": {
+        "jsCode": "// Processa resposta do GPT se não houver receitas do banco\ntry {\n  const respostaGPT = JSON.parse($input.first().json.message.content);\n  return {\n    status: 'sucesso',\n    total: respostaGPT.receitas.length,\n    ingredientes_buscados: $node['Preparar Query'].json.ingredientes,\n    receitas: respostaGPT.receitas,\n    fonte: 'ia_sugestoes'\n  };\n} catch (error) {\n  // Se falhar o parse, retorna mensagem de erro\n  return {\n    status: 'erro',\n    mensagem: 'Não foram encontradas receitas com os ingredientes informados. Tente adicionar mais ingredientes.',\n    ingredientes_buscados: $node['Preparar Query'].json.ingredientes,\n    receitas: []\n  };\n}"
+      },
+      "id": "processar-gpt",
+      "name": "Processar Resposta GPT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1650, 380]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "merge-respostas",
+      "name": "Merge Respostas",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1850, 300]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "resposta-webhook",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2050, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "erro"
+            },
+            {
+              "name": "mensagem",
+              "value": "Por favor, informe os ingredientes disponíveis."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "erro-validacao",
+      "name": "Erro Validação",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [450, 450]
+    }
+  ],
+  "connections": {
+    "Webhook Entrada": {
+      "main": [
+        [
+          {
+            "node": "Validar Entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar Entrada": {
+      "main": [
+        [
+          {
+            "node": "Preparar Query",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Erro Validação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Query": {
+      "main": [
+        [
+          {
+            "node": "Buscar Todas Receitas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Todas Receitas": {
+      "main": [
+        [
+          {
+            "node": "Filtrar Receitas Compatíveis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar Receitas Compatíveis": {
+      "main": [
+        [
+          {
+            "node": "Verificar Resultados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar Resultados": {
+      "main": [
+        [
+          {
+            "node": "Merge Respostas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GPT Sugestões (Opcional)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT Sugestões (Opcional)": {
+      "main": [
+        [
+          {
+            "node": "Processar Resposta GPT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processar Resposta GPT": {
+      "main": [
+        [
+          {
+            "node": "Merge Respostas",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Respostas": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Erro Validação": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateId": "fitchef-web-api"
+  },
+  "pinData": {}
+}
