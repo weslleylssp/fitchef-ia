@@ -1,134 +1,9 @@
 <!DOCTYPE html>
-
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FitChef IA - Receitas Fitness Inteligentes</title>
-
-  <!-- Google Analytics 4 - SUBSTITUA COM SEU ID -->
-
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
-
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-XXXXXXXXXX'); // SUBSTITUA COM SEU ID DO GA4
-  </script>
-
-  <!-- Sistema de Analytics Customizado -->
-
-  <script>
-    // Analytics Tracker para FitChef
-    const FitChefAnalytics = {
-      sessionId: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-      startTime: new Date(),
-      events: [],
-      
-      // Envia evento para o GA4
-      trackEvent: function(eventName, parameters = {}) {
-        // Google Analytics
-        if (typeof gtag !== 'undefined') {
-          gtag('event', eventName, {
-            ...parameters,
-            session_id: this.sessionId,
-            timestamp: new Date().toISOString()
-          });
-        }
-        
-        // Log local para debug
-        this.events.push({
-          event: eventName,
-          parameters: parameters,
-          timestamp: new Date().toISOString()
-        });
-        
-        // Console para desenvolvimento
-        console.log('📊 Analytics Event:', eventName, parameters);
-        
-        // Salva no localStorage para análise posterior
-        this.saveToLocalStorage();
-      },
-      
-      // Salva eventos no localStorage
-      saveToLocalStorage: function() {
-        const storageKey = 'fitchef_analytics';
-        const existingData = JSON.parse(localStorage.getItem(storageKey) || '[]');
-        existingData.push({
-          sessionId: this.sessionId,
-          events: this.events,
-          date: new Date().toISOString()
-        });
-        
-        // Mantém apenas os últimos 100 registros
-        if (existingData.length > 100) {
-          existingData.splice(0, existingData.length - 100);
-        }
-        
-        localStorage.setItem(storageKey, JSON.stringify(existingData));
-      },
-      
-      // Obtém métricas agregadas
-      getMetrics: function() {
-        const storageKey = 'fitchef_analytics';
-        const data = JSON.parse(localStorage.getItem(storageKey) || '[]');
-        
-        return {
-          totalSessions: data.length,
-          totalSearches: data.reduce((acc, session) => {
-            return acc + session.events.filter(e => e.event === 'search').length;
-          }, 0),
-          averageIngredientsPerSearch: this.calculateAverageIngredients(data),
-          mostSearchedIngredients: this.getMostSearchedIngredients(data),
-          sessionDuration: (new Date() - this.startTime) / 1000 // em segundos
-        };
-      },
-      
-      calculateAverageIngredients: function(data) {
-        let total = 0;
-        let count = 0;
-        data.forEach(session => {
-          session.events.forEach(event => {
-            if (event.event === 'search' && event.parameters.ingredients_count) {
-              total += event.parameters.ingredients_count;
-              count++;
-            }
-          });
-        });
-        return count > 0 ? (total / count).toFixed(1) : 0;
-      },
-      
-      getMostSearchedIngredients: function(data) {
-        const ingredients = {};
-        data.forEach(session => {
-          session.events.forEach(event => {
-            if (event.event === 'search' && event.parameters.ingredients) {
-              event.parameters.ingredients.forEach(ing => {
-                ingredients[ing] = (ingredients[ing] || 0) + 1;
-              });
-            }
-          });
-        });
-        
-        return Object.entries(ingredients)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 5)
-          .map(([ing, count]) => ({ ingredient: ing, count: count }));
-      }
-    };
-    
-    // Tracking de página carregada
-    window.addEventListener('load', () => {
-      FitChefAnalytics.trackEvent('page_view', {
-        page: 'home',
-        referrer: document.referrer,
-        screen_resolution: `${window.screen.width}x${window.screen.height}`,
-        viewport_size: `${window.innerWidth}x${window.innerHeight}`,
-        user_agent: navigator.userAgent
-      });
-    });
-  </script>
 
   <style>
     * {
@@ -153,7 +28,8 @@
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
       max-width: 600px;
       width: 100%;
-      padding: 40px;
+      padding: 40px 30px 80px;
+      position: relative;
     }
 
     h1 {
@@ -205,9 +81,15 @@
       margin-top: 5px;
     }
 
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
     button {
-      width: 100%;
-      padding: 15px 30px;
+      flex: 1;
+      padding: 15px;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       border: none;
@@ -223,14 +105,14 @@
       box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
     }
 
-    button:active {
-      transform: translateY(0);
-    }
-
     button:disabled {
       opacity: 0.6;
       cursor: not-allowed;
-      transform: none;
+    }
+
+    .btn-clear {
+      background: #f0f0f0;
+      color: #555;
     }
 
     .loading {
@@ -284,10 +166,8 @@
       font-size: 1rem;
       font-weight: 600;
       margin-bottom: 12px;
-      padding-left: 5px;
-      border-left: 3px solid #667eea;
-      display: inline-block;
       padding-left: 10px;
+      border-left: 3px solid #667eea;
     }
 
     .ingredients-tags {
@@ -316,246 +196,211 @@
       box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
     }
 
-    .tag:active {
-      transform: translateY(0);
-    }
-
     .tag.selected {
       background: #667eea;
       color: white;
       border-color: #764ba2;
     }
-  </style>
 
+    /* Botão flutuante para mobile */
+    @media (max-width: 600px) {
+      .btn-float {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 85%;
+        padding: 15px;
+        font-size: 17px;
+        z-index: 10;
+      }
+    }
+  </style>
 </head>
+
 <body>
   <div class="container">
     <h1>🍽️ FitChef IA</h1>
     <p class="subtitle">Transforme seus ingredientes em receitas fitness</p>
 
-```
-<div class="input-group">
-  <label for="ingredientes">Quais ingredientes você tem disponível?</label>
-  <textarea 
-    id="ingredientes" 
-    placeholder="Ex: frango, ovo, batata-doce, brócolis... (não precisa incluir temperos como sal, pimenta, alho, etc.)"
-  ></textarea>
-  <p class="hint">💡 Separe os ingredientes por vírgula. Não precisa incluir temperos básicos (sal, pimenta, azeite, alho, etc.)</p>
-</div>
-
-<div class="ingredient-categories">
-  <div class="category-section">
-    <h3 class="category-title">🥩 Proteínas</h3>
-    <div class="ingredients-tags">
-      <span class="tag" onclick="addIngredient('frango')">🍗 Frango</span>
-      <span class="tag" onclick="addIngredient('ovo')">🥚 Ovo</span>
-      <span class="tag" onclick="addIngredient('atum')">🐟 Atum</span>
+    <div class="input-group">
+      <label for="ingredientes">Quais ingredientes você tem disponível?</label>
+      <textarea 
+        id="ingredientes"
+        placeholder="Ex: frango, ovo, batata-doce, brócolis..."
+      ></textarea>
+      <p class="hint">💡 Separe os ingredientes por vírgula. Não precisa incluir temperos básicos.</p>
     </div>
-  </div>
 
-  <div class="category-section">
-    <h3 class="category-title">🌾 Carboidratos</h3>
-    <div class="ingredients-tags">
-      <span class="tag" onclick="addIngredient('batata-doce')">🍠 Batata-doce</span>
-      <span class="tag" onclick="addIngredient('arroz-integral')">🍚 Arroz integral</span>
-      <span class="tag" onclick="addIngredient('aveia')">🌾 Aveia</span>
-      <span class="tag" onclick="addIngredient('macarrão-integral')">🍝 Macarrão integral</span>
-      <span class="tag" onclick="addIngredient('tapioca')">⚪ Tapioca</span>
+    <div class="ingredient-categories">
+      <div class="category-section">
+        <h3 class="category-title">🥩 Proteínas</h3>
+        <div class="ingredients-tags proteinas-tags"></div>
+      </div>
+
+      <div class="category-section">
+        <h3 class="category-title">🌾 Carboidratos</h3>
+        <div class="ingredients-tags carboidratos-tags"></div>
+      </div>
+
+      <div class="category-section">
+        <h3 class="category-title">🥬 Legumes e Verduras</h3>
+        <div class="ingredients-tags legumes-tags"></div>
+      </div>
     </div>
-  </div>
 
-  <div class="category-section">
-    <h3 class="category-title">🥬 Legumes e Verduras</h3>
-    <div class="ingredients-tags">
-      <span class="tag" onclick="addIngredient('brócolis')">🥦 Brócolis</span>
-      <span class="tag" onclick="addIngredient('espinafre')">🥬 Espinafre</span>
-      <span class="tag" onclick="addIngredient('tomate')">🍅 Tomate</span>
-      <span class="tag" onclick="addIngredient('cenoura')">🥕 Cenoura</span>
-      <span class="tag" onclick="addIngredient('abobrinha')">🥒 Abobrinha</span>
+    <div class="btn-row">
+      <button id="buscar" onclick="buscarReceitas()">Buscar Receitas</button>
+      <button class="btn-clear" onclick="limparIngredientes()">Limpar</button>
     </div>
-  </div>
-</div>
 
-<button id="buscar" onclick="buscarReceitas()">
-  Buscar Receitas Fitness
-</button>
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p style="margin-top: 15px; color: #666;">Buscando suas receitas...</p>
+    </div>
 
-<div class="loading" id="loading">
-  <div class="spinner"></div>
-  <p style="margin-top: 15px; color: #666;">Buscando receitas perfeitas para você...</p>
-</div>
-
-<div class="error" id="error">
-  <strong>Ops!</strong> <span id="errorMsg"></span>
-</div>
-```
-
+    <div class="error" id="error">
+      <strong>Ops!</strong> <span id="errorMsg"></span>
+    </div>
   </div>
 
   <script>
-    // Adiciona ingrediente ao campo de texto
-    function addIngredient(ingredient) {
-      const textarea = document.getElementById('ingredientes');
-      const current = textarea.value.trim();
-      
-      if (current) {
-        // Verifica se o ingrediente já está na lista
-        const ingredients = current.split(',').map(i => i.trim().toLowerCase());
-        if (!ingredients.includes(ingredient.toLowerCase())) {
-          textarea.value = current + ', ' + ingredient;
-          
-          // Track evento de adicionar ingrediente
-          FitChefAnalytics.trackEvent('ingredient_added', {
-            ingredient: ingredient,
-            method: 'tag_click',
-            total_ingredients: ingredients.length + 1
-          });
-        }
-      } else {
-        textarea.value = ingredient;
-        
-        // Track primeiro ingrediente
-        FitChefAnalytics.trackEvent('ingredient_added', {
-          ingredient: ingredient,
-          method: 'tag_click',
-          total_ingredients: 1,
-          is_first: true
-        });
+    // Função auxiliar para embaralhar arrays
+    function shuffle(array) {
+      let currentIndex = array.length, randomIndex;
+      while (currentIndex !== 0) {
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex--;
+        [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
       }
-      
-      // Adiciona feedback visual
-      event.target.classList.add('selected');
-      setTimeout(() => {
-        event.target.classList.remove('selected');
-      }, 500);
-      
-      textarea.focus();
+      return array;
     }
 
-    // Função principal de busca
-    async function buscarReceitas() {
-      const ingredientesInput = document.getElementById('ingredientes');
-      const btn = document.getElementById('buscar');
-      const loading = document.getElementById('loading');
-      const errorDiv = document.getElementById('error');
-      const errorMsg = document.getElementById('errorMsg');
-      
-      // Validação
-      if (!ingredientesInput.value.trim()) {
-        errorDiv.classList.add('active');
-        errorMsg.textContent = 'Por favor, informe pelo menos um ingrediente.';
-        setTimeout(() => errorDiv.classList.remove('active'), 3000);
-        
-        // Track erro de validação
-        FitChefAnalytics.trackEvent('search_error', {
-          error_type: 'no_ingredients',
-          error_message: 'Nenhum ingrediente informado'
+    // Ingredientes disponíveis
+    const ingredientesPorCategoria = {
+      proteinas: [
+        { nome: "frango", emoji: "🍗" },
+        { nome: "ovo", emoji: "🥚" },
+        { nome: "carne", emoji: "🥩" },
+        { nome: "peito de peru", emoji: "🍖" },
+        { nome: "tofu", emoji: "🍱" },
+        { nome: "queijo cottage", emoji: "🧀" }
+      ],
+      carboidratos: [
+        { nome: "batata-doce", emoji: "🍠" },
+        { nome: "arroz integral", emoji: "🍚" },
+        { nome: "aveia", emoji: "🌾" },
+        { nome: "macarrão integral", emoji: "🍝" },
+        { nome: "tapioca", emoji: "⚪" },
+        { nome: "pão integral", emoji: "🍞" },
+        { nome: "quinoa", emoji: "🌾" }
+      ],
+      legumes: [
+        { nome: "brócolis", emoji: "🥦" },
+        { nome: "espinafre", emoji: "🥬" },
+        { nome: "tomate", emoji: "🍅" },
+        { nome: "cenoura", emoji: "🥕" },
+        { nome: "abobrinha", emoji: "🥒" },
+        { nome: "pimentão", emoji: "🫑" },
+        { nome: "couve-flor", emoji: "🥦" }
+      ]
+    };
+
+    // Renderiza aleatoriamente os ingredientes
+    function renderIngredientesAleatorios() {
+      const categorias = [
+        { id: "proteinas", selector: ".proteinas-tags" },
+        { id: "carboidratos", selector: ".carboidratos-tags" },
+        { id: "legumes", selector: ".legumes-tags" }
+      ];
+
+      categorias.forEach(cat => {
+        const container = document.querySelector(cat.selector);
+        container.innerHTML = "";
+        const embaralhados = shuffle([...ingredientesPorCategoria[cat.id]]).slice(0, 5);
+        embaralhados.forEach(ing => {
+          const span = document.createElement("span");
+          span.className = "tag";
+          span.textContent = `${ing.emoji} ${ing.nome}`;
+          span.onclick = () => addIngredient(ing.nome);
+          container.appendChild(span);
         });
-        
+      });
+    }
+
+    // Adiciona ingrediente ao campo
+    function addIngredient(ingredient) {
+      const textarea = document.getElementById("ingredientes");
+      const current = textarea.value.trim();
+      const list = current ? current.split(",").map(i => i.trim().toLowerCase()) : [];
+      if (!list.includes(ingredient.toLowerCase())) {
+        textarea.value = list.length > 0 ? current + ", " + ingredient : ingredient;
+      }
+      event.target.classList.add("selected");
+      setTimeout(() => event.target.classList.remove("selected"), 500);
+    }
+
+    // Limpa o campo de ingredientes
+    function limparIngredientes() {
+      document.getElementById("ingredientes").value = "";
+    }
+
+    // Busca as receitas
+    async function buscarReceitas() {
+      const ingredientesInput = document.getElementById("ingredientes");
+      const btn = document.getElementById("buscar");
+      const loading = document.getElementById("loading");
+      const errorDiv = document.getElementById("error");
+      const errorMsg = document.getElementById("errorMsg");
+
+      if (!ingredientesInput.value.trim()) {
+        errorDiv.classList.add("active");
+        errorMsg.textContent = "Informe pelo menos um ingrediente 😅";
+        setTimeout(() => errorDiv.classList.remove("active"), 3000);
         return;
       }
-      
-      // Prepara lista de ingredientes
+
       const lista = ingredientesInput.value
-        .split(',')
+        .split(",")
         .map(i => i.trim().toLowerCase())
         .filter(i => i.length > 0);
-      
-      // Track início da busca
-      const searchStartTime = Date.now();
-      FitChefAnalytics.trackEvent('search_started', {
-        ingredients: lista,
-        ingredients_count: lista.length,
-        ingredients_list: lista.join(','),
-        search_method: 'button_click'
-      });
-      
-      // Desabilita botão e mostra loading
+
       btn.disabled = true;
-      loading.classList.add('active');
-      errorDiv.classList.remove('active');
-      
+      btn.textContent = "🔍 Buscando...";
+      loading.classList.add("active");
+      errorDiv.classList.remove("active");
+
       try {
-        // IMPORTANTE: Substitua pela URL do seu webhook n8n
-        const WEBHOOK_URL = 'https://seu-n8n.cloud/webhook/fitchef';
-        
+        const WEBHOOK_URL = "https://wdlacerdasp.app.n8n.cloud/webhook/fitchef";
         const response = await fetch(WEBHOOK_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            ingredientes: lista,
-            analytics: {
-              sessionId: FitChefAnalytics.sessionId,
-              timestamp: new Date().toISOString()
-            }
-          })
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ingredientes: lista })
         });
-        
-        const searchDuration = (Date.now() - searchStartTime) / 1000;
-        
-        if (!response.ok) {
-          throw new Error('Erro ao buscar receitas');
-        }
-        
+
+        if (!response.ok) throw new Error("Erro ao buscar receitas.");
+
         const data = await response.json();
-        
-        if (data.status === 'sucesso' && data.receitas) {
-          // Track sucesso da busca
-          FitChefAnalytics.trackEvent('search_success', {
-            ingredients: lista,
-            ingredients_count: lista.length,
-            recipes_found: data.receitas.length,
-            search_duration: searchDuration,
-            has_results: data.receitas.length > 0
-          });
-          
-          // Salva receitas no localStorage
-          localStorage.setItem('receitas', JSON.stringify(data.receitas));
-          localStorage.setItem('ingredientes_buscados', JSON.stringify(lista));
-          
-          // Track categorias das receitas encontradas
-          const categorias = [...new Set(data.receitas.map(r => r.categoria))];
-          FitChefAnalytics.trackEvent('recipes_categories', {
-            categories: categorias,
-            categories_count: categorias.length
-          });
-          
-          // Redireciona para página de resultados
-          window.location.href = 'receitas.html';
+
+        if (data.status === "sucesso" && data.receitas) {
+          localStorage.setItem("receitas", JSON.stringify(data.receitas));
+          localStorage.setItem("ingredientes_buscados", JSON.stringify(lista));
+          window.location.href = "receitas.html";
         } else {
-          throw new Error(data.mensagem || 'Nenhuma receita encontrada');
+          throw new Error(data.mensagem || "Nenhuma receita encontrada 😕");
         }
-        
       } catch (error) {
-        console.error('Erro:', error);
-        
-        // Track erro na busca
-        FitChefAnalytics.trackEvent('search_failed', {
-          error_message: error.message,
-          ingredients: lista,
-          ingredients_count: lista.length,
-          search_duration: (Date.now() - searchStartTime) / 1000
-        });
-        
-        errorDiv.classList.add('active');
-        errorMsg.textContent = error.message || 'Erro ao conectar com o servidor. Tente novamente.';
-        setTimeout(() => errorDiv.classList.remove('active'), 5000);
+        errorDiv.classList.add("active");
+        errorMsg.textContent = error.message;
+        setTimeout(() => errorDiv.classList.remove("active"), 4000);
       } finally {
         btn.disabled = false;
-        loading.classList.remove('active');
+        btn.textContent = "Buscar Receitas";
+        loading.classList.remove("active");
       }
     }
 
-    // Permite buscar pressionando Enter
-    document.getElementById('ingredientes').addEventListener('keypress', function(e) {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        buscarReceitas();
-      }
-    });
+    window.addEventListener("load", renderIngredientesAleatorios);
   </script>
-
 </body>
 </html>
