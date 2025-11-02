@@ -349,7 +349,7 @@
     <div class="ingredients-tags">
       <span class="tag" onclick="addIngredient('frango')">🍗 Frango</span>
       <span class="tag" onclick="addIngredient('ovo')">🥚 Ovo</span>
-      <span class="tag" onclick="addIngredient('atum')">🐟 Atum</span>
+      <span class="tag" onclick="addIngredient('carne')">🥩 Atum</span>
     </div>
   </div>
 
@@ -477,7 +477,7 @@
       
       try {
         // IMPORTANTE: Substitua pela URL do seu webhook n8n
-        const WEBHOOK_URL = 'https://seu-n8n.cloud/webhook/fitchef';
+        const WEBHOOK_URL = 'https://wdlacerdasp.app.n8n.cloud/webhook/fitchef';
         
         const response = await fetch(WEBHOOK_URL, {
           method: 'POST',
