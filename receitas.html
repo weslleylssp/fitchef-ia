@@ -4,6 +4,55 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FitChef IA - Receitas Encontradas</title>
+  
+  <!-- Analytics Script -->
+  <script>
+    // Reusa o sistema de analytics
+    const FitChefAnalytics = {
+      trackEvent: function(eventName, parameters = {}) {
+        const storageKey = 'fitchef_analytics';
+        const sessionId = localStorage.getItem('fitchef_session_id') || Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('fitchef_session_id', sessionId);
+        
+        const existingData = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        
+        // Encontra ou cria sessão atual
+        let currentSession = existingData.find(s => s.sessionId === sessionId);
+        if (!currentSession) {
+          currentSession = {
+            sessionId: sessionId,
+            events: [],
+            date: new Date().toISOString()
+          };
+          existingData.push(currentSession);
+        }
+        
+        // Adiciona evento
+        currentSession.events.push({
+          event: eventName,
+          parameters: parameters,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Salva
+        localStorage.setItem(storageKey, JSON.stringify(existingData));
+        
+        console.log('📊 Analytics Event:', eventName, parameters);
+      }
+    };
+    
+    // Track página de resultados
+    window.addEventListener('load', () => {
+      const receitas = JSON.parse(localStorage.getItem('receitas') || '[]');
+      const ingredientes = JSON.parse(localStorage.getItem('ingredientes_buscados') || '[]');
+      
+      FitChefAnalytics.trackEvent('results_page_view', {
+        recipes_count: receitas.length,
+        ingredients_used: ingredientes,
+        has_results: receitas.length > 0
+      });
+    });
+  </script>
   <style>
     * {
       margin: 0;
