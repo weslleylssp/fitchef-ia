@@ -4,68 +4,60 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FitChef IA - Receitas Encontradas</title>
-  
-  <!-- Analytics Script -->
+
+  <!-- Sistema de Analytics Compatível -->
   <script>
-    // Reusa o sistema de analytics
     const FitChefAnalytics = {
-      trackEvent: function(eventName, parameters = {}) {
-        const storageKey = 'fitchef_analytics';
-        const sessionId = localStorage.getItem('fitchef_session_id') || Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('fitchef_session_id', sessionId);
-        
-        const existingData = JSON.parse(localStorage.getItem(storageKey) || '[]');
-        
-        // Encontra ou cria sessão atual
-        let currentSession = existingData.find(s => s.sessionId === sessionId);
-        if (!currentSession) {
-          currentSession = {
-            sessionId: sessionId,
-            events: [],
-            date: new Date().toISOString()
-          };
-          existingData.push(currentSession);
+      trackEvent(eventName, parameters = {}) {
+        const storageKey = "fitchef_analytics";
+        const sessionKey = "fitchef_session_id";
+        let sessionId = localStorage.getItem(sessionKey);
+        if (!sessionId) {
+          sessionId = Date.now() + "_" + Math.random().toString(36).substring(2, 9);
+          localStorage.setItem(sessionKey, sessionId);
         }
-        
-        // Adiciona evento
-        currentSession.events.push({
+
+        const events = JSON.parse(localStorage.getItem(storageKey) || "[]");
+        events.push({
+          sessionId,
           event: eventName,
-          parameters: parameters,
-          timestamp: new Date().toISOString()
+          parameters,
+          timestamp: new Date().toISOString(),
         });
-        
-        // Salva
-        localStorage.setItem(storageKey, JSON.stringify(existingData));
-        
-        console.log('📊 Analytics Event:', eventName, parameters);
-      }
+        if (events.length > 500) events.splice(0, events.length - 500);
+        localStorage.setItem(storageKey, JSON.stringify(events));
+        console.log("📊 Analytics Event:", eventName, parameters);
+      },
     };
-    
-    // Track página de resultados
-    window.addEventListener('load', () => {
-      const receitas = JSON.parse(localStorage.getItem('receitas') || '[]');
-      const ingredientes = JSON.parse(localStorage.getItem('ingredientes_buscados') || '[]');
-      
-      FitChefAnalytics.trackEvent('results_page_view', {
-        recipes_count: receitas.length,
-        ingredients_used: ingredientes,
-        has_results: receitas.length > 0
-      });
+
+    // Evento ao carregar página de resultados
+    window.addEventListener("load", () => {
+      try {
+        const receitas = JSON.parse(localStorage.getItem("receitas") || "[]");
+        const ingredientes = JSON.parse(localStorage.getItem("ingredientes_buscados") || "[]");
+        FitChefAnalytics.trackEvent("results_page_view", {
+          recipes_count: receitas.length,
+          ingredients_used: ingredientes,
+          has_results: receitas.length > 0,
+        });
+      } catch (e) {
+        console.warn("⚠️ Erro ao registrar evento:", e);
+      }
     });
   </script>
+
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
       padding: 20px;
+      color: #333;
     }
+
+    .container { max-width: 900px; margin: 0 auto; }
 
     .header {
       text-align: center;
@@ -74,13 +66,8 @@
     }
 
     .header h1 {
-      font-size: 2.5rem;
-      margin-bottom: 10px;
-    }
-
-    .header p {
-      font-size: 1.2rem;
-      opacity: 0.9;
+      font-size: 2.4rem;
+      margin-bottom: 8px;
     }
 
     .back-btn {
@@ -90,31 +77,17 @@
       padding: 10px 20px;
       border-radius: 30px;
       text-decoration: none;
-      margin-bottom: 20px;
       transition: background 0.3s;
     }
-
-    .back-btn:hover {
-      background: rgba(255,255,255,0.3);
-    }
-
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-    }
+    .back-btn:hover { background: rgba(255,255,255,0.3); }
 
     .stats {
       background: white;
       border-radius: 15px;
       padding: 20px;
-      margin-bottom: 30px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
       text-align: center;
-    }
-
-    .stats h3 {
-      color: #333;
-      margin-bottom: 10px;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
     }
 
     .ingredients-used {
@@ -127,10 +100,10 @@
 
     .ingredient-chip {
       background: #f0f0f0;
-      padding: 5px 15px;
+      padding: 6px 15px;
       border-radius: 20px;
+      color: #555;
       font-size: 0.9rem;
-      color: #666;
     }
 
     .recipes-grid {
@@ -144,7 +117,7 @@
       background: white;
       border-radius: 15px;
       overflow: hidden;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25);
       transition: transform 0.3s, box-shadow 0.3s;
     }
 
@@ -159,53 +132,32 @@
       padding: 20px;
     }
 
-    .recipe-header h2 {
-      font-size: 1.5rem;
-      margin-bottom: 5px;
-    }
-
+    .recipe-header h2 { font-size: 1.5rem; margin-bottom: 5px; }
     .recipe-category {
-      display: inline-block;
       background: rgba(255,255,255,0.2);
-      padding: 3px 10px;
-      border-radius: 15px;
+      border-radius: 12px;
+      padding: 4px 10px;
       font-size: 0.85rem;
-      margin-top: 5px;
     }
 
-    .recipe-body {
-      padding: 20px;
-    }
+    .recipe-body { padding: 20px; }
 
-    .recipe-section {
-      margin-bottom: 20px;
-    }
-
-    .recipe-section:last-child {
-      margin-bottom: 0;
-    }
-
+    .recipe-section { margin-bottom: 20px; }
     .recipe-section h3 {
       color: #667eea;
       font-size: 1.1rem;
       margin-bottom: 10px;
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
     }
 
-    .ingredients-list {
-      list-style: none;
-      padding: 0;
-    }
-
+    .ingredients-list { list-style: none; padding: 0; }
     .ingredients-list li {
-      padding: 5px 0;
-      padding-left: 20px;
-      position: relative;
+      padding: 4px 0 4px 20px;
       color: #555;
+      position: relative;
     }
-
     .ingredients-list li:before {
       content: "✓";
       position: absolute;
@@ -217,7 +169,7 @@
     .preparation {
       color: #555;
       line-height: 1.6;
-      white-space: pre-line;
+      white-space: normal;
     }
 
     .macros {
@@ -229,74 +181,42 @@
       border-radius: 10px;
     }
 
-    .macro-item {
-      text-align: center;
-    }
-
-    .macro-value {
-      font-size: 1.3rem;
-      font-weight: bold;
-      color: #667eea;
-    }
-
-    .macro-label {
-      font-size: 0.85rem;
-      color: #888;
-      text-transform: uppercase;
-      margin-top: 2px;
-    }
+    .macro-item { text-align: center; }
+    .macro-value { font-size: 1.3rem; font-weight: bold; color: #667eea; }
+    .macro-label { font-size: 0.85rem; color: #888; margin-top: 2px; text-transform: uppercase; }
 
     .no-results {
       background: white;
       border-radius: 15px;
       padding: 40px;
       text-align: center;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    }
-
-    .no-results h2 {
-      color: #333;
-      margin-bottom: 15px;
-    }
-
-    .no-results p {
-      color: #666;
-      margin-bottom: 25px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
     }
 
     .btn-primary {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       padding: 12px 30px;
-      border: none;
       border-radius: 30px;
       text-decoration: none;
-      display: inline-block;
       font-weight: 600;
       transition: transform 0.2s;
     }
-
-    .btn-primary:hover {
-      transform: translateY(-2px);
-    }
+    .btn-primary:hover { transform: translateY(-2px); }
 
     @media (max-width: 768px) {
-      .recipes-grid {
-        grid-template-columns: 1fr;
-      }
-      
-      .header h1 {
-        font-size: 2rem;
-      }
+      .recipes-grid { grid-template-columns: 1fr; }
+      .header h1 { font-size: 2rem; }
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <div class="header">
       <a href="index.html" class="back-btn">← Nova Busca</a>
       <h1>🍽️ FitChef IA</h1>
-      <p id="subtitle">Suas receitas fitness personalizadas</p>
+      <p>Suas receitas fitness personalizadas</p>
     </div>
 
     <div class="stats" id="stats">
@@ -315,104 +235,89 @@
   </div>
 
   <script>
-    // Carrega receitas do localStorage
-    const receitas = JSON.parse(localStorage.getItem('receitas')) || [];
-    const ingredientesBuscados = JSON.parse(localStorage.getItem('ingredientes_buscados')) || [];
-    
-    // Atualiza contador e ingredientes usados
-    document.getElementById('recipeCount').textContent = receitas.length;
-    
-    const ingredientsContainer = document.getElementById('ingredientsUsed');
+    const receitas = JSON.parse(localStorage.getItem("receitas") || "[]");
+    const ingredientesBuscados = JSON.parse(localStorage.getItem("ingredientes_buscados") || "[]");
+
+    document.getElementById("recipeCount").textContent = receitas.length;
+    const ingredientsContainer = document.getElementById("ingredientsUsed");
+
     ingredientesBuscados.forEach(ing => {
-      const chip = document.createElement('div');
-      chip.className = 'ingredient-chip';
+      const chip = document.createElement("div");
+      chip.className = "ingredient-chip";
       chip.textContent = ing;
       ingredientsContainer.appendChild(chip);
     });
-    
-    // Container principal
-    const container = document.getElementById('recipesContainer');
-    const noResults = document.getElementById('noResults');
-    const stats = document.getElementById('stats');
-    
+
+    const container = document.getElementById("recipesContainer");
+    const noResults = document.getElementById("noResults");
+    const stats = document.getElementById("stats");
+
     if (receitas.length === 0) {
-      container.style.display = 'none';
-      noResults.style.display = 'block';
-      stats.style.display = 'none';
+      container.style.display = "none";
+      noResults.style.display = "block";
+      stats.style.display = "none";
     } else {
-      // Renderiza cada receita
       receitas.forEach(receita => {
-        const card = document.createElement('div');
-        card.className = 'recipe-card';
-        
-        // Processa macros
-        let macrosHtml = '';
-        if (receita.macros) {
-          macrosHtml = `
-            <div class="recipe-section">
-              <h3>📊 Informações Nutricionais</h3>
-              <div class="macros">
-                <div class="macro-item">
-                  <div class="macro-value">${receita.macros.kcal || '—'}</div>
-                  <div class="macro-label">kcal</div>
-                </div>
-                <div class="macro-item">
-                  <div class="macro-value">${receita.macros.p || '—'}g</div>
-                  <div class="macro-label">Proteína</div>
-                </div>
-                <div class="macro-item">
-                  <div class="macro-value">${receita.macros.c || '—'}g</div>
-                  <div class="macro-label">Carbos</div>
-                </div>
-                <div class="macro-item">
-                  <div class="macro-value">${receita.macros.g || '—'}g</div>
-                  <div class="macro-label">Gordura</div>
-                </div>
+        const card = document.createElement("div");
+        card.className = "recipe-card";
+
+        const categoria = receita.categoria || "Receita Fitness";
+
+        // Corrige quebras de linha no modo de preparo
+        const modoFormatado = (receita.modo_preparo || "")
+          .replace(/\\n/g, "<br>")
+          .replace(/\n/g, "<br>");
+
+        // Ingredientes
+        const ingredientesList = Array.isArray(receita.ingredientes)
+          ? receita.ingredientes.map(ing => `<li>${ing}</li>`).join("")
+          : `<li>${receita.ingredientes || "—"}</li>`;
+
+        // Macros
+        const macros = receita.macros || {};
+        const macrosHtml = `
+          <div class="recipe-section">
+            <h3>📊 Informações Nutricionais</h3>
+            <div class="macros">
+              <div class="macro-item">
+                <div class="macro-value">${macros.kcal || "—"}</div>
+                <div class="macro-label">kcal</div>
+              </div>
+              <div class="macro-item">
+                <div class="macro-value">${macros.p || "—"}g</div>
+                <div class="macro-label">Proteína</div>
+              </div>
+              <div class="macro-item">
+                <div class="macro-value">${macros.c || "—"}g</div>
+                <div class="macro-label">Carbos</div>
+              </div>
+              <div class="macro-item">
+                <div class="macro-value">${macros.g || "—"}g</div>
+                <div class="macro-label">Gordura</div>
               </div>
             </div>
-          `;
-        }
-        
-        // Processa ingredientes
-        let ingredientsList = '';
-        if (Array.isArray(receita.ingredientes)) {
-          ingredientsList = receita.ingredientes
-            .map(ing => `<li>${ing}</li>`)
-            .join('');
-        }
-        
-        // Categoria
-        const categoria = receita.categoria || 'Receita Fitness';
-        
+          </div>`;
+
         card.innerHTML = `
           <div class="recipe-header">
-            <h2>${receita.nome}</h2>
+            <h2>${receita.nome || "Receita sem nome"}</h2>
             <span class="recipe-category">${categoria}</span>
           </div>
           <div class="recipe-body">
             <div class="recipe-section">
               <h3>🥘 Ingredientes</h3>
-              <ul class="ingredients-list">
-                ${ingredientsList}
-              </ul>
+              <ul class="ingredients-list">${ingredientesList}</ul>
             </div>
-            
             <div class="recipe-section">
               <h3>👨‍🍳 Modo de Preparo</h3>
-              <div class="preparation">${receita.modo_preparo}</div>
+              <div class="preparation">${modoFormatado}</div>
             </div>
-            
             ${macrosHtml}
-          </div>
-        `;
-        
+          </div>`;
+
         container.appendChild(card);
       });
     }
-
-    // Limpa localStorage após exibir (opcional)
-    // localStorage.removeItem('receitas');
-    // localStorage.removeItem('ingredientes_buscados');
   </script>
 </body>
 </html>
