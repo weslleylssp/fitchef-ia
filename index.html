@@ -11,7 +11,7 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100dvh; /* corrigido para mobile */
+      min-height: 100dvh;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -173,28 +173,8 @@
     .error.active { display: block; }
   </style>
 
-  <!-- Analytics Global -->
-  <script>
-    const FitChefAnalytics = {
-      trackEvent: function(eventName, parameters = {}) {
-        const storageKey = 'fitchef_analytics';
-        const sessionId =
-          localStorage.getItem('fitchef_session_id') ||
-          Date.now() + '_' + Math.random().toString(36).substring(2, 9);
-        localStorage.setItem('fitchef_session_id', sessionId);
-
-        const events = JSON.parse(localStorage.getItem(storageKey) || '[]');
-        events.push({
-          sessionId,
-          event: eventName,
-          parameters,
-          timestamp: new Date().toISOString(),
-        });
-        localStorage.setItem(storageKey, JSON.stringify(events));
-        console.log('📊 Analytics Event:', eventName, parameters);
-      },
-    };
-  </script>
+  <!-- Inclusão do módulo de analytics -->
+  <script src="analytics.html" defer></script>
 </head>
 
 <body>
@@ -239,6 +219,7 @@
   </div>
 
   <script>
+    // Embaralhamento e renderização dinâmica de ingredientes
     function shuffle(array) {
       let i = array.length, r;
       while (i) {
@@ -328,7 +309,6 @@
       btn.disabled = true;
       loading.classList.add("active");
 
-      // 🔹 Analytics: início da busca
       FitChefAnalytics.trackEvent('search_started', {
         ingredients: lista,
         ingredients_count: lista.length,
@@ -341,39 +321,37 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ingredientes: lista })
         });
+
         if (!resp.ok) throw new Error("Erro ao buscar receitas.");
         const data = await resp.json();
 
         if (data.status === "sucesso" && data.receitas?.length) {
-          // 🔹 Analytics: busca com sucesso
           FitChefAnalytics.trackEvent('search_success', {
             recipes_found: data.receitas.length,
             ingredients_count: lista.length,
             timestamp: new Date().toISOString()
           });
 
-          localStorage.setItem("receitas", JSON.stringify(data.receitas));
-          localStorage.setItem("ingredientes_buscados", JSON.stringify(lista));
-          window.location.href = "receitas.html";
+          setTimeout(() => {
+            localStorage.setItem("receitas", JSON.stringify(data.receitas));
+            localStorage.setItem("ingredientes_buscados", JSON.stringify(lista));
+            window.location.href = "receitas.html";
+          }, 200);
         } else {
-          // 🔹 Analytics: sem resultados
           FitChefAnalytics.trackEvent('search_failed', {
             reason: 'no_results',
             ingredients: lista,
             timestamp: new Date().toISOString()
           });
-
           throw new Error(data.mensagem_usuario || "Nenhuma receita encontrada 😕");
         }
       } catch (e) {
-        // 🔹 Analytics: erro de rede ou exceção
         FitChefAnalytics.trackEvent('search_failed', {
           reason: 'network_error',
           message: e.message,
           ingredients: lista,
           timestamp: new Date().toISOString()
         });
-
         err.classList.add("active");
         errMsg.textContent = e.message;
         setTimeout(() => err.classList.remove("active"), 4000);
