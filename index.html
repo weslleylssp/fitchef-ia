@@ -58,16 +58,8 @@
       font-family: inherit;
     }
 
-    textarea:focus {
-      outline: none;
-      border-color: #667eea;
-    }
-
-    .hint {
-      color: #999;
-      font-size: 0.9rem;
-      margin-top: 5px;
-    }
+    textarea:focus { outline: none; border-color: #667eea; }
+    .hint { color: #999; font-size: 0.9rem; margin-top: 5px; }
 
     .ingredient-categories { margin-top: 20px; }
     .category-section { margin-bottom: 25px; }
@@ -137,15 +129,8 @@
       box-shadow: 0 10px 20px rgba(102,126,234,0.4);
     }
 
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .btn-clear {
-      background: #f0f0f0;
-      color: #555;
-    }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-clear { background: #f0f0f0; color: #555; }
 
     .loading { display: none; text-align: center; margin-top: 20px; }
     .loading.active { display: block; }
@@ -173,8 +158,27 @@
     .error.active { display: block; }
   </style>
 
-  <!-- Inclusão do módulo de analytics -->
-  <script src="analytics.html" defer></script>
+  <!-- Analytics Global -->
+  <script>
+    const FitChefAnalytics = {
+      trackEvent: function(eventName, parameters = {}) {
+        const storageKey = 'fitchef_analytics';
+        const sessionKey = 'fitchef_session_id';
+        let sessionId = localStorage.getItem(sessionKey);
+        if (!sessionId) {
+          sessionId = Date.now() + '_' + Math.random().toString(36).substring(2,9);
+          localStorage.setItem(sessionKey, sessionId);
+        }
+
+        const events = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        events.push({ sessionId, event: eventName, parameters, timestamp: new Date().toISOString() });
+        if (events.length > 500) events.splice(0, events.length - 500);
+        localStorage.setItem(storageKey, JSON.stringify(events));
+
+        console.log("📊 Analytics Event:", eventName, parameters);
+      }
+    };
+  </script>
 </head>
 
 <body>
@@ -219,41 +223,28 @@
   </div>
 
   <script>
-    // Embaralhamento e renderização dinâmica de ingredientes
     function shuffle(array) {
       let i = array.length, r;
-      while (i) {
-        r = Math.floor(Math.random() * i--);
-        [array[i], array[r]] = [array[r], array[i]];
-      }
+      while (i) { r = Math.floor(Math.random() * i--); [array[i], array[r]] = [array[r], array[i]]; }
       return array;
     }
 
     const ingredientesPorCategoria = {
       proteinas: [
-        { nome: "frango", emoji: "🍗" },
-        { nome: "ovo", emoji: "🥚" },
-        { nome: "carne", emoji: "🥩" },
-        { nome: "peito de peru", emoji: "🍖" },
-        { nome: "tofu", emoji: "🍱" },
-        { nome: "queijo cottage", emoji: "🧀" }
+        { nome: "frango", emoji: "🍗" }, { nome: "ovo", emoji: "🥚" },
+        { nome: "carne", emoji: "🥩" }, { nome: "peito de peru", emoji: "🍖" },
+        { nome: "tofu", emoji: "🍱" }, { nome: "queijo cottage", emoji: "🧀" }
       ],
       carboidratos: [
-        { nome: "batata-doce", emoji: "🍠" },
-        { nome: "arroz integral", emoji: "🍚" },
-        { nome: "aveia", emoji: "🌾" },
-        { nome: "macarrão integral", emoji: "🍝" },
-        { nome: "tapioca", emoji: "⚪" },
-        { nome: "pão integral", emoji: "🍞" },
+        { nome: "batata-doce", emoji: "🍠" }, { nome: "arroz integral", emoji: "🍚" },
+        { nome: "aveia", emoji: "🌾" }, { nome: "macarrão integral", emoji: "🍝" },
+        { nome: "tapioca", emoji: "⚪" }, { nome: "pão integral", emoji: "🍞" },
         { nome: "quinoa", emoji: "🌾" }
       ],
       legumes: [
-        { nome: "brócolis", emoji: "🥦" },
-        { nome: "espinafre", emoji: "🥬" },
-        { nome: "tomate", emoji: "🍅" },
-        { nome: "cenoura", emoji: "🥕" },
-        { nome: "abobrinha", emoji: "🥒" },
-        { nome: "pimentão", emoji: "🫑" },
+        { nome: "brócolis", emoji: "🥦" }, { nome: "espinafre", emoji: "🥬" },
+        { nome: "tomate", emoji: "🍅" }, { nome: "cenoura", emoji: "🥕" },
+        { nome: "abobrinha", emoji: "🥒" }, { nome: "pimentão", emoji: "🫑" },
         { nome: "couve-flor", emoji: "🥦" }
       ]
     };
@@ -282,8 +273,14 @@
       const list = textarea.value.split(",").map(i => i.trim().toLowerCase()).filter(Boolean);
       if (!list.includes(name.toLowerCase())) {
         textarea.value = list.length ? textarea.value + ", " + name : name;
+        el.classList.add("selected");
+
+        // 🔹 Analytics: ingrediente adicionado
+        FitChefAnalytics.trackEvent("ingredient_added", {
+          ingredient: name,
+          timestamp: new Date().toISOString()
+        });
       }
-      el.classList.add("selected");
     }
 
     function limparIngredientes() {
@@ -309,7 +306,7 @@
       btn.disabled = true;
       loading.classList.add("active");
 
-      FitChefAnalytics.trackEvent('search_started', {
+      FitChefAnalytics.trackEvent("search_started", {
         ingredients: lista,
         ingredients_count: lista.length,
         timestamp: new Date().toISOString()
@@ -326,28 +323,30 @@
         const data = await resp.json();
 
         if (data.status === "sucesso" && data.receitas?.length) {
-          FitChefAnalytics.trackEvent('search_success', {
+          FitChefAnalytics.trackEvent("search_success", {
             recipes_found: data.receitas.length,
             ingredients_count: lista.length,
+            ingredients: lista,
             timestamp: new Date().toISOString()
           });
 
-          setTimeout(() => {
-            localStorage.setItem("receitas", JSON.stringify(data.receitas));
-            localStorage.setItem("ingredientes_buscados", JSON.stringify(lista));
-            window.location.href = "receitas.html";
-          }, 200);
+          // 🔸 Delay para garantir gravação antes do redirecionamento
+          await new Promise(res => setTimeout(res, 300));
+
+          localStorage.setItem("receitas", JSON.stringify(data.receitas));
+          localStorage.setItem("ingredientes_buscados", JSON.stringify(lista));
+          window.location.href = "receitas.html";
         } else {
-          FitChefAnalytics.trackEvent('search_failed', {
-            reason: 'no_results',
+          FitChefAnalytics.trackEvent("search_failed", {
+            reason: "no_results",
             ingredients: lista,
             timestamp: new Date().toISOString()
           });
           throw new Error(data.mensagem_usuario || "Nenhuma receita encontrada 😕");
         }
       } catch (e) {
-        FitChefAnalytics.trackEvent('search_failed', {
-          reason: 'network_error',
+        FitChefAnalytics.trackEvent("search_failed", {
+          reason: "network_error",
           message: e.message,
           ingredients: lista,
           timestamp: new Date().toISOString()
